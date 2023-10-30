@@ -1,7 +1,9 @@
 import paho.mqtt.client as mqtt
 import json
 
-import duckduck_event_handler
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from duckduck_event_handler import DuckDuckEventHandler
 
 
 class DeviceConfig():
@@ -27,26 +29,23 @@ def on_connect(device_code, client, userdata, flags, reasonCode, properties):
     client.subscribe(f"{device_code}/#")
 
 # The callback for when a PUBLISH message is received from the server.
-def on_message(client, userdata, msg):
-    global device_config
+def on_message(handler_instance, client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
     subtopic = msg.topic.split("/")[1]
-    if subtopic in event_handlers:
-        event_handlers[subtopic](device_config.illumination_service, msg.payload)
+    if handler_instance.is_handling(subtopic):
+        handler_instance.on_message(subtopic, msg.payload)
     else:
         print(f"unknown topic received: {msg.topic}")
 
 device_config = DeviceConfig(get_device_config())
 
-event_handlers = {
-    "hsl": duckduck_event_handler.on_update_hsl,
-    "cct": duckduck_event_handler.on_update_cct,
-    "power": duckduck_event_handler.on_update_power
-}
+scheduler = BackgroundScheduler()
+
+event_handler = DuckDuckEventHandler(device_config.illumination_service, scheduler)
 
 client = mqtt.Client(client_id='', userdata=None, protocol=mqtt.MQTTv5)
 client.on_connect = lambda c,u,f,r,p: on_connect(device_config.code, c, u, f, r, p)
-client.on_message = on_message
+client.on_message = lambda c,u,m: on_message(event_handler, c, u, m)
 
 client.tls_set(tls_version=mqtt.ssl.PROTOCOL_TLS)
 client.username_pw_set(device_config.username, device_config.password)
