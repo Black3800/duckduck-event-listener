@@ -39,7 +39,8 @@ def on_message(client, userdata, msg):
 device_config = DeviceConfig(get_device_config())
 
 event_handlers = {
-    "hsl": duckduck_event_handler.on_update_hsl
+    "hsl": duckduck_event_handler.on_update_hsl,
+    "cct": duckduck_event_handler.on_update_cct
 }
 
 client = mqtt.Client(client_id='', userdata=None, protocol=mqtt.MQTTv5)
