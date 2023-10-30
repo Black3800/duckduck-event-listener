@@ -57,7 +57,7 @@ class DuckDuckEventHandler:
             peak = datetime(2023, 10, 31, peak["hours"], peak["minutes"])
 
             if start > peak:
-                start = datetime(2023, 10, 30, start["hours"], start["minutes"])
+                start = datetime(2023, 10, 30, start.hour, start.minute)
 
             diff = (peak - start).seconds
             time_unit = diff / 185
