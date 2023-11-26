@@ -9,7 +9,7 @@ from duckduck_event_handler import DuckDuckEventHandler
 class DeviceConfig():
     def __init__(self, config_obj):
         self.code = config_obj["device_code"]
-        self.key = config_obj["device_key"]
+        self.key = config_obj["device_secret"]
         self.username = config_obj["mqtt_username"]
         self.password = config_obj["mqtt_password"]
         self.mqtt_host = config_obj["mqtt_host"]
