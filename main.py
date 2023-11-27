@@ -43,7 +43,7 @@ scheduler = BackgroundScheduler()
 
 client = mqtt.Client(client_id=device_config.code, userdata=None, protocol=mqtt.MQTTv5)
 
-event_handler = DuckDuckEventHandler(device_config.illumination_service, scheduler, client.publish)
+event_handler = DuckDuckEventHandler(device_config.illumination_service, scheduler, client.publish, device_config.code)
 
 client.on_connect = lambda c,u,f,r,p: on_connect(device_config.code, c, u, f, r, p)
 client.on_message = lambda c,u,m: on_message(event_handler, c, u, m)

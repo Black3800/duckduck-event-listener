@@ -2,11 +2,9 @@ import json
 import requests
 from datetime import datetime
 
-device_code = "ABC45"
-
 class DuckDuckEventHandler:
 
-    def __init__(self, illuminationServiceURI, scheduler, mqttPublish):
+    def __init__(self, illuminationServiceURI, scheduler, mqttPublish, device_code):
         self.illuminationServiceURI = illuminationServiceURI
         self.scheduler = scheduler
         self.scheduler.start()
@@ -19,6 +17,7 @@ class DuckDuckEventHandler:
             "delete-alarm": self.on_delete_alarm
         }
         self.mqttPublish = mqttPublish
+        self.device_code = device_code
 
     def is_handling(self, subtopic):
         return subtopic in self.handlers
@@ -52,7 +51,9 @@ class DuckDuckEventHandler:
             return ",".join(day_list)
         
     def trigger_alarm(self, id):
-        self.mqttPublish(f"{device_code}/trigger-alarm", {"id":id})
+        self.mqttPublish(self.device_code + "/trigger-alarm", json.dumps({
+            "id": id
+        }))
 
     def on_create_alarm(self, payload):
         data = json.loads(payload)
@@ -61,7 +62,7 @@ class DuckDuckEventHandler:
         self.scheduler.add_job(
             self.trigger_alarm,
             "cron",
-            id=data["id"],
+            id='t' + data["id"],
             day_of_week=self.format_cron_day(data["repeat_days"]),
             hour=wake["hours"],
             minute=wake["minutes"],
@@ -82,7 +83,7 @@ class DuckDuckEventHandler:
             self.scheduler.add_job(
                 self.start_sunrise,
                 "cron",
-                id=data["id"],
+                id='s' + data["id"],
                 day_of_week=self.format_cron_day(data["repeat_days"]),
                 hour=start.hour,
                 minute=start.minute,
