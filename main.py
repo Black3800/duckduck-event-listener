@@ -1,5 +1,7 @@
 import paho.mqtt.client as mqtt
 import json
+from base64 import b64encode
+from os import urandom
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -41,7 +43,7 @@ device_config = DeviceConfig(get_device_config())
 
 scheduler = BackgroundScheduler()
 
-client = mqtt.Client(client_id=device_config.code, userdata=None, protocol=mqtt.MQTTv5)
+client = mqtt.Client(client_id=b64encode(urandom(32)), userdata=None, protocol=mqtt.MQTTv5)
 
 event_handler = DuckDuckEventHandler(device_config.illumination_service, scheduler, client.publish, device_config.code)
 
