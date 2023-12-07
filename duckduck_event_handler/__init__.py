@@ -4,11 +4,13 @@ from datetime import datetime
 
 class DuckDuckEventHandler:
 
-    def __init__(self, illuminationServiceURI, scheduler, mqttPublish, device_code):
+    def __init__(self, illuminationServiceURI, serverURI, scheduler, mqttPublish, device_code, device_secret):
         self.illuminationServiceURI = illuminationServiceURI
+        self.serverURI = serverURI
         self.scheduler = scheduler
         self.scheduler.start()
         self.handlers = {
+            "register": self.on_register,
             "hsl": self.on_update_hsl,
             "cct": self.on_update_cct,
             "power": self.on_update_power,
@@ -18,12 +20,42 @@ class DuckDuckEventHandler:
         }
         self.mqttPublish = mqttPublish
         self.device_code = device_code
+        self.device_secret = device_secret
+        self.SWEET_DREAMS_ACTIVE = True
+        self.DIM_MINS = 1
+        self.LULLABY = "https://storage.googleapis.com/duckduck-bucket/lullaby-song/Instrument/acoustic-guitar-loop.mp3"
+        self.fetch_sweet_dreams()
+
+    def fetch_sweet_dreams(self):
+        login_r = requests.post(f"{self.serverURI}/device-login", json={
+            "device_code": self.device_code,
+            "secret": self.device_secret
+        })
+        if login_r.status_code != 200:
+            print("Device login failed", self.device_code)
+            return
+        token = json.loads(login_r.content)
+        self.token = token["data"]["token"]
+        data = requests.get(f"{self.serverURI}/sweet-dreams",
+                         headers={
+                             "Authorization": f"Bearer {self.token}"
+                         }
+                         )
+        data = json.loads(data.content)
+        data = data["data"]
+        self.SWEET_DREAMS_ACTIVE = data["dim_light"]["is_active"]
+        self.DIM_MINS = data["dim_light"]["duration"]
+        self.LULLABY = data["current_lullaby_song_path"]
+        print(self.SWEET_DREAMS_ACTIVE, self.DIM_MINS, self.LULLABY)
 
     def is_handling(self, subtopic):
         return subtopic in self.handlers
 
     def on_message(self, subtopic, payload):
         self.handlers[subtopic](payload)
+
+    def on_register(self, payload):
+        self.fetch_sweet_dreams()
 
     def on_update_hsl(self, payload):
         data = json.loads(payload)
@@ -65,7 +97,7 @@ class DuckDuckEventHandler:
     def dim_light(self):
         r = requests.post(f"{self.illuminationServiceURI}/dim")
         payload = {
-            "audioUrl": "https://storage.googleapis.com/duckduck-bucket/lullaby-song/Instrument/acoustic-guitar-loop.mp3"
+            "audioUrl": self.LULLABY
         }
         print("sending ", payload)
         self.mqttPublish(self.device_code + "/sweet-dreams", json.dumps(payload))
@@ -93,7 +125,7 @@ class DuckDuckEventHandler:
             args=[data["id"]]
         )
 
-        dim_minutes = bed["minutes"] - 60
+        dim_minutes = bed["minutes"] - self.DIM_MINS
         dim_hours = bed["hours"] - 1 if dim_minutes < 0 else bed["hours"]
         dim_days = self.backward_one_day(data["repeat_days"]) if dim_hours < 0 else data["repeat_days"]
 

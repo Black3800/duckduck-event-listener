@@ -17,6 +17,7 @@ class DeviceConfig():
         self.mqtt_host = config_obj["mqtt_host"]
         self.mqtt_port = config_obj["mqtt_port"]
         self.illumination_service = config_obj["illumination_service"]
+        self.server = config_obj["server"]
 
 def get_device_config():
     f = open(".device_config", "r")
@@ -45,7 +46,14 @@ scheduler = BackgroundScheduler()
 
 client = mqtt.Client(client_id=b64encode(urandom(32)), userdata=None, protocol=mqtt.MQTTv5)
 
-event_handler = DuckDuckEventHandler(device_config.illumination_service, scheduler, client.publish, device_config.code)
+event_handler = DuckDuckEventHandler(
+    device_config.illumination_service,
+    device_config.server,
+    scheduler,
+    client.publish,
+    device_config.code,
+    device_config.key
+)
 
 client.on_connect = lambda c,u,f,r,p: on_connect(device_config.code, c, u, f, r, p)
 client.on_message = lambda c,u,m: on_message(event_handler, c, u, m)
