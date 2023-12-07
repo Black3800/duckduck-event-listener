@@ -50,6 +50,13 @@ class DuckDuckEventHandler:
         else:
             return ",".join(day_list)
         
+    def backward_one_day(self, day_list):
+        days = {"sun": "sat", "mon": "sun", "tue": "mon", "wed": "tue", "thu": "wed", "fri": "thu", "sat": "fri"}
+        new_day_list= []
+        for day in day_list:
+            new_day_list.append(days[day])
+        return new_day_list
+        
     def trigger_alarm(self, id):
         self.mqttPublish(self.device_code + "/trigger-alarm", json.dumps({
             "id": id
@@ -57,9 +64,11 @@ class DuckDuckEventHandler:
 
     def dim_light(self):
         r = requests.post(f"{self.illuminationServiceURI}/dim")
-        self.mqttPublish(self.device_code + "/sweet-dreams", json.dumps({
-            "audioUrl": "kkk"
-        }))
+        payload = {
+            "audioUrl": "https://storage.googleapis.com/duckduck-bucket/lullaby-song/Instrument/acoustic-guitar-loop.mp3"
+        }
+        print("sending ", payload)
+        self.mqttPublish(self.device_code + "/sweet-dreams", json.dumps(payload))
         return r.text
     
     def light_off(self):
@@ -84,13 +93,20 @@ class DuckDuckEventHandler:
             args=[data["id"]]
         )
 
+        dim_minutes = bed["minutes"] - 60
+        dim_hours = bed["hours"] - 1 if dim_minutes < 0 else bed["hours"]
+        dim_days = self.backward_one_day(data["repeat_days"]) if dim_hours < 0 else data["repeat_days"]
+
+        dim_minutes %= 60
+        dim_hours %= 24
+
         self.scheduler.add_job(
             self.dim_light,
             "cron",
             id='d' + data["id"],
-            day_of_week=self.format_cron_day(data["repeat_days"]),
-            hour=bed["hours"],
-            minute=bed["minutes"] - 1
+            day_of_week=self.format_cron_day(dim_days),
+            hour=dim_hours,
+            minute=dim_minutes
         )
 
         self.scheduler.add_job(
