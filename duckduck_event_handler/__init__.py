@@ -66,6 +66,7 @@ class DuckDuckEventHandler:
         r = requests.post(f"{self.illuminationServiceURI}/power", json={
             'on': False
         })
+        self.mqttPublish(self.device_code + "/sweet-dreams", json.dumps({}))
         return r.text
 
     def on_create_alarm(self, payload):
