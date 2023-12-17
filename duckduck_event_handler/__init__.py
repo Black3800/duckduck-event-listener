@@ -1,6 +1,7 @@
 import json
 import requests
 from datetime import datetime
+from websocket import create_connection
 
 class DuckDuckEventHandler:
 
@@ -16,7 +17,8 @@ class DuckDuckEventHandler:
             "power": self.on_update_power,
             "create-alarm": self.on_create_alarm,
             "update-alarm": self.on_update_alarm,
-            "delete-alarm": self.on_delete_alarm
+            "delete-alarm": self.on_delete_alarm,
+            "update-sweet-dreams": self.on_update_sweet_dreams,
         }
         self.mqttPublish = mqttPublish
         self.device_code = device_code
@@ -72,6 +74,12 @@ class DuckDuckEventHandler:
 
     def on_update_power(self, payload):
         data = json.loads(payload)
+        ws = create_connection("ws://localhost:8080")
+        ws.send(json.dumps({
+            "topic": f"{self.device_code}/power-ws",
+            "payload": data
+        }))
+        ws.close()
         r = requests.post(f"{self.illuminationServiceURI}/power", json=data)
         # print(r.text)
         return r.text
@@ -188,6 +196,12 @@ class DuckDuckEventHandler:
             self.scheduler.remove_job("o" + data["id"])
         if self.scheduler.get_job("s" + data["id"]) != None:
             self.scheduler.remove_job("s" + data["id"])
+
+    def on_update_sweet_dreams(self, payload):
+        data = json.loads(payload)
+        self.SWEET_DREAMS_ACTIVE = data["dim_light"]["active"]
+        self.DIM_MINS = data["dim_light"]["duration"]
+        self.LULLABY = data["current_lullaby_song_path"]
 
     def start_sunrise(self, time_unit):
         r = requests.post(f"{self.illuminationServiceURI}/sunrise", json={"time_unit": time_unit})
