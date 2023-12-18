@@ -52,8 +52,17 @@ class DuckDuckEventHandler:
 
     def is_handling(self, subtopic):
         return subtopic in self.handlers
+    
+    def ws_send(self, topic, payload):
+        ws = create_connection("ws://localhost:8080")
+        ws.send(json.dumps({
+            "topic": f"{self.device_code}/{topic}",
+            "payload": json.loads(payload)
+        }))
+        ws.close()
 
     def on_message(self, subtopic, payload):
+        self.ws_send(subtopic, payload)
         self.handlers[subtopic](payload)
 
     def on_register(self, payload):
@@ -74,12 +83,6 @@ class DuckDuckEventHandler:
 
     def on_update_power(self, payload):
         data = json.loads(payload)
-        ws = create_connection("ws://localhost:8080")
-        ws.send(json.dumps({
-            "topic": f"{self.device_code}/power-ws",
-            "payload": data
-        }))
-        ws.close()
         r = requests.post(f"{self.illuminationServiceURI}/power", json=data)
         # print(r.text)
         return r.text
@@ -98,7 +101,7 @@ class DuckDuckEventHandler:
         return new_day_list
         
     def trigger_alarm(self, id):
-        self.mqttPublish(self.device_code + "/trigger-alarm", json.dumps({
+        self.ws_send("trigger-alarm", json.dumps({
             "id": id
         }))
 
@@ -108,18 +111,22 @@ class DuckDuckEventHandler:
             "audioUrl": self.LULLABY
         }
         print("sending ", payload)
-        self.mqttPublish(self.device_code + "/sweet-dreams", json.dumps(payload))
+        self.ws_send("sweet-dreams", json.dumps(payload))
         return r.text
     
     def light_off(self):
         r = requests.post(f"{self.illuminationServiceURI}/power", json={
             'on': False
         })
-        self.mqttPublish(self.device_code + "/sweet-dreams", json.dumps({}))
+        self.ws_send("sweet-dreams", json.dumps({}))
         return r.text
 
     def on_create_alarm(self, payload):
         data = json.loads(payload)
+        active = data["is_active"]["status"]
+        if not active:
+            return
+        
         bed = data["bed_time"]
         wake = data["wake_up_time"]
 

@@ -6,5 +6,7 @@ paho-mqtt==1.6.1
 pytz==2023.3.post1
 requests==2.31.0
 six==1.16.0
+tzdata==2023.3
 tzlocal==5.2
 urllib3==1.26.6
+websocket-client==1.7.0

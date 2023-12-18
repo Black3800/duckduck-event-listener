@@ -1,7 +1,5 @@
 import websockets
 import asyncio
-import json
-from time import sleep
 
 # Server data
 PORT = 8080 
