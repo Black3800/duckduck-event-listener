@@ -27,9 +27,8 @@ class DuckDuckEventHandler:
         self.DIM_MINS = 1
         self.LULLABY = "https://storage.googleapis.com/duckduck-bucket/lullaby-song/Instrument/acoustic-guitar-loop.mp3"
         self.fetch_sweet_dreams()
-        self.fetch_alarms()
 
-    def login(self):
+    def fetch_sweet_dreams(self):
         login_r = requests.post(f"{self.serverURI}/device-login", json={
             "device_code": self.device_code,
             "secret": self.device_secret
@@ -39,30 +38,17 @@ class DuckDuckEventHandler:
             return
         token = json.loads(login_r.content)
         self.token = token["data"]["token"]
-
-    def fetch_sweet_dreams(self):
-        self.login()
-        data = requests.get(f"{self.serverURI}/alarms",
+        data = requests.get(f"{self.serverURI}/sweet-dreams",
                          headers={
                              "Authorization": f"Bearer {self.token}"
                          }
                          )
         data = json.loads(data.content)
         data = data["data"]
+        self.SWEET_DREAMS_ACTIVE = data["dim_light"]["is_active"]
+        self.DIM_MINS = data["dim_light"]["duration"]
+        self.LULLABY = data["current_lullaby_song_path"]
         print(self.SWEET_DREAMS_ACTIVE, self.DIM_MINS, self.LULLABY)
-
-    def fetch_alarms(self):
-        self.login()
-        data = requests.get(f"{self.serverURI}/alarms",
-                         headers={
-                             "Authorization": f"Bearer {self.token}"
-                         }
-                         )
-        data = json.loads(data.content)
-        data = data["data"]
-        self.clear_all_alarm()
-        for alarm in data:
-            self.on_create_alarm(json.dumps(alarm))
 
     def is_handling(self, subtopic):
         return subtopic in self.handlers
@@ -81,7 +67,6 @@ class DuckDuckEventHandler:
 
     def on_register(self, payload):
         self.fetch_sweet_dreams()
-        self.fetch_alarms()
 
     def on_update_hsl(self, payload):
         data = json.loads(payload)
@@ -218,12 +203,6 @@ class DuckDuckEventHandler:
             self.scheduler.remove_job("o" + data["id"])
         if self.scheduler.get_job("s" + data["id"]) != None:
             self.scheduler.remove_job("s" + data["id"])
-
-    def clear_all_alarm(self):
-        print(self.scheduler.get_jobs())
-        jobs = self.scheduler.get_jobs()
-        for job in jobs:
-            print(job)
 
     def on_update_sweet_dreams(self, payload):
         data = json.loads(payload)
